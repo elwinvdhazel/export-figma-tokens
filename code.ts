@@ -21,29 +21,7 @@ function generateConfigContent(colors: Record<string, string>, typography: Recor
 
   const color = ${JSON.stringify(colors, null, 2)};
 
-  const color = {
-    darkest: '#000',
-    lightest: '#fff',
-    primary: primaryColor.hex(),
-    secondary: secondaryColor.hex(),
-
-    // Shades of gray
-    gray: {
-        100: '#f2f2f2',
-        200: '#dfdfdf',
-        300: '#cdcdcd',
-    },
-
-    // State colours used for i.e notifications
-    highlight: {
-        success: '#1EAC70',
-        info: 'lightblue',
-        warning: 'orange',
-        error: '#DF3755'
-    }
-  };
-
-  export const typography = ${JSON.stringify(typography, null, 2)};
+  const typography = ${JSON.stringify(typography, null, 2)};
 `;
 }
 
@@ -62,20 +40,59 @@ function exportTokens() {
   const colors: Record<string, string> = {};
   const typography: Record<string, TextStyle> = {};
 
-
   // Export colors
   const colorSection = tokenPage.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
 
   if (colorSection) {
     colorSection.children.forEach((child) => {
       if (child.type === 'FRAME') {
-        const colorName = child.name;
-        const colorValue = child.fills[0].opacity != 1 ? convertColorToRgba(child.fills[0].color, child.fills[0].opacity) : convertColorToHex(child.fills[0].color);
-        colors[colorName] = colorValue;
-        console.log(child);
+        const layerName = child.name;
+        const layerNames = layerName.split('/');
+  
+        if (layerNames.length === 1) {
+          // Handle regular color layer
+          const colorName = layerNames[0];
+          const colorValue = child.fills[0].opacity !== 1 ? convertColorToRgba(child.fills[0].color, child.fills[0].opacity) : convertColorToHex(child.fills[0].color);
+  
+          // Check if the color name already exists in the colors array
+          if (!colors.hasOwnProperty(colorName)) {
+            colors[colorName] = colorValue;
+          }
+        } else if (layerNames.length > 1) {
+          // Handle JSON object
+          const objName = layerNames[0];
+          const objProps = layerNames.slice(1);
+  
+          // Check if the object name already exists in the colors array
+          if (!colors.hasOwnProperty(objName)) {
+            // Create new object if it doesn't exist
+            colors[objName] = {};
+          }
+  
+          // Check if the properties of the object already exist
+          let obj = colors[objName];
+          for (let i = 0; i < objProps.length; i++) {
+            const prop = objProps[i];
+  
+            if (!obj.hasOwnProperty(prop)) {
+              // Create new property if it doesn't exist
+              if (i === objProps.length - 1) {
+                // Last property, assign color value
+                obj[prop] = child.fills[0].opacity !== 1 ? convertColorToRgba(child.fills[0].color, child.fills[0].opacity) : convertColorToHex(child.fills[0].color);
+              } else {
+                // Intermediate property, create new object
+                obj[prop] = {};
+              }
+            }
+  
+            obj = obj[prop]; // Move to the next nested object
+          }
+        }
       }
     });
   }
+
+  console.log(colors);
 
   // Export typography
   const typographySection = tokenPage.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
