@@ -37,43 +37,46 @@ function exportTokens() {
     return;
   }
 
-  const colors: Record<string, string> = {};
+  let colors: Record<string, string> = {};
   const typography: Record<string, TextStyle> = {};
 
   // Export colors
   const colorSection = tokenPage.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
 
   if (colorSection) {
+    const colorsWithoutObject: Record<string, string> = {}; // Store colors without objects
+    const colorsWithObjects: Record<string, any> = {}; // Store colors with objects
+
     colorSection.children.forEach((child) => {
       if (child.type === 'FRAME') {
         const layerName = child.name;
         const layerNames = layerName.split('/');
-  
+
         if (layerNames.length === 1) {
           // Handle regular color layer
           const colorName = layerNames[0];
           const colorValue = child.fills[0].opacity !== 1 ? convertColorToRgba(child.fills[0].color, child.fills[0].opacity) : convertColorToHex(child.fills[0].color);
-  
-          // Check if the color name already exists in the colors array
-          if (!colors.hasOwnProperty(colorName)) {
-            colors[colorName] = colorValue;
+
+          // Check if the color name already exists in the colors without object array
+          if (!colorsWithObjects.hasOwnProperty(colorName) && !colorsWithoutObject.hasOwnProperty(colorName)) {
+            colorsWithoutObject[colorName] = colorValue;
           }
         } else if (layerNames.length > 1) {
           // Handle JSON object
           const objName = layerNames[0];
           const objProps = layerNames.slice(1);
-  
-          // Check if the object name already exists in the colors array
-          if (!colors.hasOwnProperty(objName)) {
+
+          // Check if the object name already exists in the colors with objects array
+          if (!colorsWithObjects.hasOwnProperty(objName)) {
             // Create new object if it doesn't exist
-            colors[objName] = {};
+            colorsWithObjects[objName] = {};
           }
-  
+
           // Check if the properties of the object already exist
-          let obj = colors[objName];
+          let obj = colorsWithObjects[objName];
           for (let i = 0; i < objProps.length; i++) {
             const prop = objProps[i];
-  
+
             if (!obj.hasOwnProperty(prop)) {
               // Create new property if it doesn't exist
               if (i === objProps.length - 1) {
@@ -84,27 +87,29 @@ function exportTokens() {
                 obj[prop] = {};
               }
             }
-  
+
             obj = obj[prop]; // Move to the next nested object
           }
         }
       }
     });
+
+    // Merge colorsWithoutObject and colorsWithObjects into the colors object, keeping colors as the destination variable
+    colors = { ...colorsWithoutObject, ...colorsWithObjects };
   }
 
-  console.log(colors);
 
   // Export typography
   const typographySection = tokenPage.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
 
   if (typographySection) {
-    typographySection.children.forEach((child) => {
-      if (child.type === 'TEXT') {
-        const typographyName = child.name;
-        const typographyStyle = child.textStyleId ? figma.getStyleById(child.textStyleId) : {};
-        typography[typographyName] = typographyStyle;
-      }
-    });
+    // typographySection.children.forEach((child) => {
+    //   if (child.type === 'TEXT') {
+    //     const typographyName = child.name;
+    //     const typographyStyle = child.textStyleId ? figma.getStyleById(child.textStyleId) : {};
+    //     typography[typographyName] = typographyStyle;
+    //   }
+    // });
   }
 
   const configContent = generateConfigContent(colors, typography);
