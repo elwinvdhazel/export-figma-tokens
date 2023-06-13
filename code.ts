@@ -1,3 +1,5 @@
+const sizeRange = ["sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl"]
+
 // Function to convert Figma color to CSS-friendly string
 function convertColorToRgba(color: RGB, alpha: 0): string {
   const { r, g, b } = color;
@@ -21,7 +23,7 @@ function generateConfigContent(colors: Record<string, string>, typography: Recor
 
   const color = ${JSON.stringify(colors, null, 2)};
 
-  const typography = ${JSON.stringify(typography, null, 2)};
+  const font = ${JSON.stringify(typography, null, 2)};
 `;
 }
 
@@ -37,10 +39,8 @@ function exportTokens() {
     return;
   }
 
-  let colors: Record<string, string> = {};
-  const typography: Record<string, TextStyle> = {};
-
   // Export colors
+  let colors: Record<string, string> = {};
   const colorSection = tokenPage.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
 
   if (colorSection) {
@@ -100,17 +100,68 @@ function exportTokens() {
 
 
   // Export typography
+  let typography: Record<string, TextStyle> = {};
   const typographySection = tokenPage.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
 
   if (typographySection) {
-    // typographySection.children.forEach((child) => {
-    //   if (child.type === 'TEXT') {
-    //     const typographyName = child.name;
-    //     const typographyStyle = child.textStyleId ? figma.getStyleById(child.textStyleId) : {};
-    //     typography[typographyName] = typographyStyle;
-    //   }
-    // });
+    const fontFamilies: Record<string, any> = {}; // Store fonts
+    const fontSizes: Record<string, string> = {}; // Store font sizes
+    const lineHeights: Record<string, string> = {}; // Store line heights
+
+    typographySection.children.forEach((child) => {
+      if (child.type === 'FRAME' || child.type === 'TEXT' ) {
+        const layerName = child.name;
+        const layerNames = layerName.split('/');
+
+        if (layerNames[0] === 'family') {
+          // Handle font family
+          const fontName = layerNames.slice(1).join('/'); // Exclude the 'family' prefix
+          const fontFamily = child.children[0].fontName.family;
+
+          // Check if the font name already exists in the fonts object
+          if (!fontFamilies.hasOwnProperty(fontName)) {
+            fontFamilies[fontName] = {};
+          }
+
+          fontFamilies[fontName].family = fontFamily;
+        }
+        
+        if (layerNames[0] === 'sm' || layerNames[0] === 'lg') {
+          // Handle font size
+          const fontSize = child.children[0].fontSize;
+          const fontSizeExists = Object.values(fontSizes).includes(fontSize);
+          if (!fontSizeExists) fontSizes[layerName] = fontSize;
+
+          // Handle line height
+          const lineHeight = child.children[0].lineHeight.value.toFixed();
+          const lineHeightExists = Object.values(lineHeights).includes(lineHeight);
+          if (!lineHeightExists) lineHeights[layerName] = lineHeight;
+        }
+      }
+    });
+
+    const orderedFontSizes = Object.fromEntries(Object.entries(fontSizes).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1])));
+    const mappedFontSizes: Record<string, string> = {};
+    const sortedFontSizes = Object.entries(orderedFontSizes).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]));
+
+    sortedFontSizes.forEach(([size, value], index) => {
+      const mappedSize = sizeRange[index] || sizeRange[sizeRange.length - 1]; // Assign the largest size if there are more font sizes than options in sizeRange
+      mappedFontSizes[mappedSize] = value;
+    });
+    
+    const orderedLineHeights = Object.fromEntries(Object.entries(lineHeights).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1])));
+    const mappedLineHeights: Record<string, string> = {};
+    const sortedLineHeights = Object.entries(orderedLineHeights).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]));
+
+    sortedLineHeights.forEach(([size, value], index) => {
+      const mappedSize = sizeRange[index] || sizeRange[sizeRange.length - 1]; // Assign the largest size if there are more line heights than options in sizeRange
+      mappedLineHeights[mappedSize] = value;
+    });
+
+    // Merge fonts, fontSizes, and lineHeights into the typography object
+    typography = { fontFamilies, fontSizes: mappedFontSizes, lineHeights: mappedLineHeights };
   }
+
 
   const configContent = generateConfigContent(colors, typography);
 
