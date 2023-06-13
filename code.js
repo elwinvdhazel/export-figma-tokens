@@ -1,5 +1,16 @@
 "use strict";
-const sizeRange = ["sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl"];
+const sizeRange = ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl"];
+const weightRange = [{
+        hairline: '100',
+        thin: '200',
+        light: '300',
+        normal: '400',
+        medium: '500',
+        semibold: '600',
+        bold: '700',
+        extrabold: '800',
+        black: '900'
+    }];
 // Function to convert Figma color to CSS-friendly string
 function convertColorToRgba(color, alpha) {
     const { r, g, b } = color;
@@ -14,13 +25,15 @@ function convertColorToHex(color) {
     return `#${r}${g}${b}`;
 }
 // Function to generate the JavaScript config file content
-function generateConfigContent(colors, typography) {
+function generateConfigContent(colors, typography, lineheight) {
     return `
   // config.js
 
   const color = ${JSON.stringify(colors, null, 2)};
 
   const font = ${JSON.stringify(typography, null, 2)};
+
+  const lineHeight = ${JSON.stringify(lineheight, null, 2)};
 `;
 }
 // Function to export properties from the "🎨 Tokens" page
@@ -87,12 +100,15 @@ function exportTokens() {
     }
     // Export typography
     let typography = {};
+    let lineheight = {};
     const typographySection = tokenPage.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
     if (typographySection) {
         const fontFamilies = {}; // Store fonts
         const fontSizes = {}; // Store font sizes
+        const fontWeights = {}; // Store font weights
         const lineHeights = {}; // Store line heights
         typographySection.children.forEach((child) => {
+            var _a;
             if (child.type === 'FRAME' || child.type === 'TEXT') {
                 const layerName = child.name;
                 const layerNames = layerName.split('/');
@@ -108,12 +124,18 @@ function exportTokens() {
                 }
                 if (layerNames[0] === 'sm' || layerNames[0] === 'lg') {
                     // Handle font size
-                    const fontSize = child.children[0].fontSize;
+                    const fontSize = `${(child.children[0].fontSize / 16)}rem`;
                     const fontSizeExists = Object.values(fontSizes).includes(fontSize);
                     if (!fontSizeExists)
                         fontSizes[layerName] = fontSize;
+                    // Handle font weight
+                    const fontWeight = child.children[0].fontWeight;
+                    const fontWeightName = (_a = Object.entries(weightRange[0]).find(([name, value]) => value == fontWeight)) === null || _a === void 0 ? void 0 : _a[0];
+                    const fontWeightExists = Object.values(fontWeights).includes(fontWeight);
+                    if (!fontWeightExists && fontWeightName)
+                        fontWeights[fontWeightName] = fontWeight;
                     // Handle line height
-                    const lineHeight = child.children[0].lineHeight.value.toFixed();
+                    const lineHeight = (child.children[0].lineHeight.value * 0.01).toFixed(1);
                     const lineHeightExists = Object.values(lineHeights).includes(lineHeight);
                     if (!lineHeightExists)
                         lineHeights[layerName] = lineHeight;
@@ -124,20 +146,21 @@ function exportTokens() {
         const mappedFontSizes = {};
         const sortedFontSizes = Object.entries(orderedFontSizes).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]));
         sortedFontSizes.forEach(([size, value], index) => {
-            const mappedSize = sizeRange[index] || sizeRange[sizeRange.length - 1]; // Assign the largest size if there are more font sizes than options in sizeRange
+            const mappedSize = sizeRange[index];
             mappedFontSizes[mappedSize] = value;
         });
         const orderedLineHeights = Object.fromEntries(Object.entries(lineHeights).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1])));
         const mappedLineHeights = {};
         const sortedLineHeights = Object.entries(orderedLineHeights).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]));
         sortedLineHeights.forEach(([size, value], index) => {
-            const mappedSize = sizeRange[index] || sizeRange[sizeRange.length - 1]; // Assign the largest size if there are more line heights than options in sizeRange
+            const mappedSize = sizeRange[index];
             mappedLineHeights[mappedSize] = value;
         });
         // Merge fonts, fontSizes, and lineHeights into the typography object
-        typography = { fontFamilies, fontSizes: mappedFontSizes, lineHeights: mappedLineHeights };
+        typography = { family: fontFamilies, size: mappedFontSizes, weight: fontWeights };
+        lineheight = mappedLineHeights;
     }
-    const configContent = generateConfigContent(colors, typography);
+    const configContent = generateConfigContent(colors, typography, lineheight);
     console.log(configContent);
     // // Create and save the config.js file
     // const configFile = figma.createFile();
