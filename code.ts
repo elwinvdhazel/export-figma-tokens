@@ -28,17 +28,43 @@ function convertColorToHex(color: RGB): string {
 
 
 // Function to generate the JavaScript config file content
-function generateConfigContent(colors: Record<string, string>, typography: Record<string, TextStyle>, lineheight: Record<string, string>): string {
+function generateConfigContent(
+  typography: Record<string, TextStyle>,
+  lineheight: Record<string, string>,
+  // grid: Record<string, string>,
+  // spacing: Record<string, string>,
+  // borderRadius: Record<string, string>,
+  boxShadow: Record<string, string>,
+  colors: Record<string, string>,
+  // transition: Record<string, string>
+  ):
+  
+  string {
   return `
   // config.js
 
-  const color = ${JSON.stringify(colors, null, 2)};
+  const font = ${JSON.stringify(typography, null, 4)};
 
-  const font = ${JSON.stringify(typography, null, 2)};
+  const lineHeight = ${JSON.stringify(lineheight, null, 4)};
 
-  const lineHeight = ${JSON.stringify(lineheight, null, 2)};
-`;
+  const boxShadow = ${JSON.stringify(boxShadow, null, 4)};
+
+  const color = ${JSON.stringify(colors, null, 4)};
+  
+  `;
 }
+
+
+// const grid = ${JSON.stringify(grid, null, 4)};
+
+// const spacing = ${JSON.stringify(spacing, null, 4)};
+
+// const borderRadius = ${JSON.stringify(borderRadius, null, 4)};
+
+// const transition = ${JSON.stringify(transition, null, 4)};
+
+
+
 
 // Function to export properties from the "🎨 Tokens" page
 function exportTokens() {
@@ -51,7 +77,7 @@ function exportTokens() {
     figma.closePlugin('Please go to the "🎨 Tokens" page to run this plugin');
     return;
   }
-
+  
   // Export colors
   let colors: Record<string, string> = {};
   const colorSection = tokenPage.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
@@ -138,7 +164,7 @@ function exportTokens() {
             fontFamilies[fontName] = {};
           }
 
-          fontFamilies[fontName].family = fontFamily;
+          fontFamilies[fontName] = fontFamily;
         }
         
         if (layerNames[0] === 'sm' || layerNames[0] === 'lg') {
@@ -184,8 +210,48 @@ function exportTokens() {
     lineheight = mappedLineHeights;
   }
 
+  // Export dropshadows
+  let boxShadow: Record<string, string> = {};
+  const boxShadowSection = tokenPage.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
 
-  const configContent = generateConfigContent(colors, typography, lineheight);
+  if (boxShadowSection) {
+    const boxShadows: Record<string, any> = {};
+
+    boxShadowSection.children.forEach((child) => {
+      if (child.type === 'FRAME') {
+        const layerName = child.name;
+        const effect = child.effects.find((effect) => effect.type);
+        // const effect = child.effects.find((effect) => effect.type === 'DROP_SHADOW');
+        // const effect = child.effects.find((effect) => effect.type);
+        console.log(effect);
+
+        if (!boxShadows.hasOwnProperty(layerName)) {
+          boxShadows[layerName] = {};
+        }
+
+        if (effect.type === 'DROP_SHADOW' || effect.type  === 'INNER_SHADOW') {
+          const dropShadowColor = effect.color;
+          const dropShadowOffset = effect.offset;
+          const dropShadowSpread = effect.spread;
+          const dropShadowRadius = effect.radius;
+          const dropShadowInset = effect.type  === 'INNER_SHADOW' ? 'inset' : '';
+          const dropShadowEffect = `${dropShadowInset} ${dropShadowOffset.x}px ${dropShadowOffset.y}px ${dropShadowRadius}px ${dropShadowSpread}px ${convertColorToRgba(dropShadowColor, dropShadowColor.a)}`
+
+          boxShadows[layerName] = dropShadowEffect;
+        }
+      }
+    });
+
+    boxShadow = boxShadows;
+  }
+
+  // Export borderradius
+
+  // Export transitions
+
+  // Export spacings
+
+  const configContent = generateConfigContent(typography, lineheight, boxShadow, colors);
 
   console.log(configContent);
 

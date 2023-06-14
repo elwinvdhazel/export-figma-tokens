@@ -25,17 +25,28 @@ function convertColorToHex(color) {
     return `#${r}${g}${b}`;
 }
 // Function to generate the JavaScript config file content
-function generateConfigContent(colors, typography, lineheight) {
+function generateConfigContent(typography, lineheight, 
+// grid: Record<string, string>,
+// spacing: Record<string, string>,
+// borderRadius: Record<string, string>,
+boxShadow, colors) {
     return `
   // config.js
 
-  const color = ${JSON.stringify(colors, null, 2)};
+  const font = ${JSON.stringify(typography, null, 4)};
 
-  const font = ${JSON.stringify(typography, null, 2)};
+  const lineHeight = ${JSON.stringify(lineheight, null, 4)};
 
-  const lineHeight = ${JSON.stringify(lineheight, null, 2)};
-`;
+  const boxShadow = ${JSON.stringify(boxShadow, null, 4)};
+
+  const color = ${JSON.stringify(colors, null, 4)};
+  
+  `;
 }
+// const grid = ${JSON.stringify(grid, null, 4)};
+// const spacing = ${JSON.stringify(spacing, null, 4)};
+// const borderRadius = ${JSON.stringify(borderRadius, null, 4)};
+// const transition = ${JSON.stringify(transition, null, 4)};
 // Function to export properties from the "🎨 Tokens" page
 function exportTokens() {
     const pageName = '🎨 Tokens'; //TODO: make select box to select source page
@@ -120,7 +131,7 @@ function exportTokens() {
                     if (!fontFamilies.hasOwnProperty(fontName)) {
                         fontFamilies[fontName] = {};
                     }
-                    fontFamilies[fontName].family = fontFamily;
+                    fontFamilies[fontName] = fontFamily;
                 }
                 if (layerNames[0] === 'sm' || layerNames[0] === 'lg') {
                     // Handle font size
@@ -160,7 +171,38 @@ function exportTokens() {
         typography = { family: fontFamilies, size: mappedFontSizes, weight: fontWeights };
         lineheight = mappedLineHeights;
     }
-    const configContent = generateConfigContent(colors, typography, lineheight);
+    // Export dropshadows
+    let boxShadow = {};
+    const boxShadowSection = tokenPage.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
+    if (boxShadowSection) {
+        const boxShadows = {};
+        boxShadowSection.children.forEach((child) => {
+            if (child.type === 'FRAME') {
+                const layerName = child.name;
+                const effect = child.effects.find((effect) => effect.type);
+                // const effect = child.effects.find((effect) => effect.type === 'DROP_SHADOW');
+                // const effect = child.effects.find((effect) => effect.type);
+                console.log(effect);
+                if (!boxShadows.hasOwnProperty(layerName)) {
+                    boxShadows[layerName] = {};
+                }
+                if (effect.type === 'DROP_SHADOW' || effect.type === 'INNER_SHADOW') {
+                    const dropShadowColor = effect.color;
+                    const dropShadowOffset = effect.offset;
+                    const dropShadowSpread = effect.spread;
+                    const dropShadowRadius = effect.radius;
+                    const dropShadowInset = effect.type === 'INNER_SHADOW' ? 'inset' : '';
+                    const dropShadowEffect = `${dropShadowInset} ${dropShadowOffset.x}px ${dropShadowOffset.y}px ${dropShadowRadius}px ${dropShadowSpread}px ${convertColorToRgba(dropShadowColor, dropShadowColor.a)}`;
+                    boxShadows[layerName] = dropShadowEffect;
+                }
+            }
+        });
+        boxShadow = boxShadows;
+    }
+    // Export borderradius
+    // Export transitions
+    // Export spacings
+    const configContent = generateConfigContent(typography, lineheight, boxShadow, colors);
     console.log(configContent);
     // // Create and save the config.js file
     // const configFile = figma.createFile();
