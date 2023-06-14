@@ -1,3 +1,4 @@
+const rootSize = 16;
 const sizeRange = ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl"]
 const weightRange = [{
   hairline: '100',
@@ -33,7 +34,7 @@ function generateConfigContent(
   lineheight: Record<string, string>,
   // grid: Record<string, string>,
   // spacing: Record<string, string>,
-  // borderRadius: Record<string, string>,
+  borderRadius: Record<string, string>,
   boxShadow: Record<string, string>,
   colors: Record<string, string>,
   // transition: Record<string, string>
@@ -47,6 +48,8 @@ function generateConfigContent(
 
   const lineHeight = ${JSON.stringify(lineheight, null, 4)};
 
+  const borderRadius = ${JSON.stringify(borderRadius, null, 4)};
+
   const boxShadow = ${JSON.stringify(boxShadow, null, 4)};
 
   const color = ${JSON.stringify(colors, null, 4)};
@@ -58,8 +61,6 @@ function generateConfigContent(
 // const grid = ${JSON.stringify(grid, null, 4)};
 
 // const spacing = ${JSON.stringify(spacing, null, 4)};
-
-// const borderRadius = ${JSON.stringify(borderRadius, null, 4)};
 
 // const transition = ${JSON.stringify(transition, null, 4)};
 
@@ -169,7 +170,7 @@ function exportTokens() {
         
         if (layerNames[0] === 'sm' || layerNames[0] === 'lg') {
           // Handle font size
-          const fontSize = `${(child.children[0].fontSize / 16)}rem`;
+          const fontSize = `${(child.children[0].fontSize / rootSize)}rem`;
           const fontSizeExists = Object.values(fontSizes).includes(fontSize);
           if (!fontSizeExists) fontSizes[layerName] = fontSize;
 
@@ -221,9 +222,6 @@ function exportTokens() {
       if (child.type === 'FRAME') {
         const layerName = child.name;
         const effect = child.effects.find((effect) => effect.type);
-        // const effect = child.effects.find((effect) => effect.type === 'DROP_SHADOW');
-        // const effect = child.effects.find((effect) => effect.type);
-        console.log(effect);
 
         if (!boxShadows.hasOwnProperty(layerName)) {
           boxShadows[layerName] = {};
@@ -246,12 +244,36 @@ function exportTokens() {
   }
 
   // Export borderradius
+  let borderRadius: Record<string, string> = {};
+  const borderRadiusSection = tokenPage.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
+
+  if (borderRadiusSection) {
+    const borderRadiuss: Record<string, any> = {};
+
+    borderRadiusSection.children.forEach((child) => {
+      if (child.type === 'FRAME') {
+        const layerName = child.name;
+
+        if (!borderRadiuss.hasOwnProperty(layerName)) {
+          borderRadiuss[layerName] = {};
+        }
+
+        if (typeof child.cornerRadius === 'number') {
+          borderRadiuss[layerName] = `${(child.cornerRadius / rootSize)}rem`;
+        } else {
+          borderRadiuss[layerName] = `${(child.topRightRadius / rootSize)}rem ${(child.bottomRightRadius / rootSize)}rem ${(child.bottomLeftRadius / rootSize)}rem ${(child.topLeftRadius / rootSize)}rem`;
+        }
+      }
+    });
+
+    borderRadius = borderRadiuss;
+  }
 
   // Export transitions
 
   // Export spacings
 
-  const configContent = generateConfigContent(typography, lineheight, boxShadow, colors);
+  const configContent = generateConfigContent(typography, lineheight, borderRadius, boxShadow, colors);
 
   console.log(configContent);
 
