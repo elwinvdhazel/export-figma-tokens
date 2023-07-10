@@ -26,28 +26,28 @@ function convertColorToHex(color) {
     return `#${r}${g}${b}`;
 }
 // Function to generate the JavaScript config file content
-function generateConfigContent(typography, lineheight, 
-// grid: Record<string, string>,
-// spacing: Record<string, string>,
-borderRadius, boxShadow, colors) {
+function generateConfigContent(typography, lineheight, grid, spacing, borderRadius, boxShadow, colors, transition) {
     return `
-  // config.js
+  // variables.js
 
   const font = ${JSON.stringify(typography, null, 4)};
 
   const lineHeight = ${JSON.stringify(lineheight, null, 4)};
+
+  const grid = ${JSON.stringify(grid, null, 4)};
+
+  const spacing = ${JSON.stringify(spacing, null, 4)};
 
   const borderRadius = ${JSON.stringify(borderRadius, null, 4)};
 
   const boxShadow = ${JSON.stringify(boxShadow, null, 4)};
 
   const color = ${JSON.stringify(colors, null, 4)};
+
+  const transition = ${JSON.stringify(transition, null, 4)};
   
   `;
 }
-// const grid = ${JSON.stringify(grid, null, 4)};
-// const spacing = ${JSON.stringify(spacing, null, 4)};
-// const transition = ${JSON.stringify(transition, null, 4)};
 // Function to export properties from the "🎨 Tokens" page
 function exportTokens() {
     const pageName = '🎨 Tokens'; //TODO: make select box to select source page
@@ -172,7 +172,99 @@ function exportTokens() {
         typography = { family: fontFamilies, size: mappedFontSizes, weight: fontWeights };
         lineheight = mappedLineHeights;
     }
-    // Export dropshadows
+    // Export grid
+    let grid = {};
+    const gridSection = tokenPage.children.find((child) => child.name === 'Grid' && child.type === 'SECTION');
+    if (gridSection) {
+        const gridWithoutObject = {};
+        const gridWithObjects = {};
+        gridSection.children.forEach((child) => {
+            if (child.type === 'FRAME') {
+                const layerName = child.name;
+                const layerNames = layerName.split('/');
+                if (layerNames.length === 1) {
+                    // Handle regular color layer
+                    const gridName = layerNames[0];
+                    const gridValue = `${child.width}px`;
+                    // Check if the color name already exists in the colors without object array
+                    if (!gridWithObjects.hasOwnProperty(gridName) && !gridWithoutObject.hasOwnProperty(gridName)) {
+                        gridWithoutObject[gridName] = gridValue;
+                    }
+                }
+                else if (layerNames.length > 1) {
+                    // Handle JSON object
+                    const objName = layerNames[0];
+                    const objProps = layerNames.slice(1);
+                    // Check if the object name already exists in the colors with objects array
+                    if (!gridWithObjects.hasOwnProperty(objName)) {
+                        // Create new object if it doesn't exist
+                        gridWithObjects[objName] = {};
+                    }
+                    // Check if the properties of the object already exist
+                    let obj = gridWithObjects[objName];
+                    for (let i = 0; i < objProps.length; i++) {
+                        const prop = objProps[i];
+                        if (!obj.hasOwnProperty(prop)) {
+                            // Create new property if it doesn't exist
+                            if (i === objProps.length - 1) {
+                                // Last property, assign color value
+                                obj[prop] = `${(child.width / rootSize)}rem`;
+                            }
+                            else {
+                                // Intermediate property, create new object
+                                obj[prop] = {};
+                            }
+                        }
+                        obj = obj[prop]; // Move to the next nested object
+                    }
+                }
+            }
+        });
+        // Merge colorsWithoutObject and colorsWithObjects into the colors object, keeping colors as the destination variable
+        grid = Object.assign(Object.assign({}, gridWithoutObject), gridWithObjects);
+    }
+    // Export spacings
+    let spacing = {};
+    const spacingSection = tokenPage.children.find((child) => child.name === 'Spacing' && child.type === 'SECTION');
+    if (spacingSection) {
+        const spacings = {};
+        spacingSection.children.forEach((child) => {
+            if (child.type === 'FRAME') {
+                const layerName = child.name;
+                if (!spacings.hasOwnProperty(layerName)) {
+                    spacings[layerName] = {};
+                }
+                // Handle spacing
+                const spacingValue = `${child.width}px`;
+                const spacingExists = Object.values(spacings).some((value) => value === spacingValue);
+                if (!spacingExists)
+                    spacings[layerName] = spacingValue;
+            }
+        });
+        spacing = spacings;
+    }
+    // Export borderradius
+    let borderRadius = {};
+    const borderRadiusSection = tokenPage.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
+    if (borderRadiusSection) {
+        const borderRadiuss = {};
+        borderRadiusSection.children.forEach((child) => {
+            if (child.type === 'FRAME') {
+                const layerName = child.name;
+                if (!borderRadiuss.hasOwnProperty(layerName)) {
+                    borderRadiuss[layerName] = {};
+                }
+                if (typeof child.cornerRadius === 'number') {
+                    borderRadiuss[layerName] = `${(child.cornerRadius / rootSize)}rem`;
+                }
+                else {
+                    borderRadiuss[layerName] = `${(child.topRightRadius / rootSize)}rem ${(child.bottomRightRadius / rootSize)}rem ${(child.bottomLeftRadius / rootSize)}rem ${(child.topLeftRadius / rootSize)}rem`;
+                }
+            }
+        });
+        borderRadius = borderRadiuss;
+    }
+    // Export boxshadow
     let boxShadow = {};
     const boxShadowSection = tokenPage.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
     if (boxShadowSection) {
@@ -197,30 +289,52 @@ function exportTokens() {
         });
         boxShadow = boxShadows;
     }
-    // Export borderradius
-    let borderRadius = {};
-    const borderRadiusSection = tokenPage.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
-    if (borderRadiusSection) {
-        const borderRadiuss = {};
-        borderRadiusSection.children.forEach((child) => {
+    // Export transitions
+    let transition = {};
+    const transitionSection = tokenPage.children.find((child) => child.name === 'Transitions' && child.type === 'SECTION');
+    if (transitionSection) {
+        const transitionWithoutObject = {};
+        const transitionWithObjects = {};
+        transitionSection.children.forEach((child) => {
             if (child.type === 'FRAME') {
                 const layerName = child.name;
-                if (!borderRadiuss.hasOwnProperty(layerName)) {
-                    borderRadiuss[layerName] = {};
+                const layerNames = layerName.split('/');
+                if (layerNames.length === 1) {
+                    // Handle regular color layer
+                    const transitionName = layerNames[0];
+                    const transitionValue = child.findOne(node => node.type === 'TEXT').characters;
+                    // Check if the color name already exists in the colors without object array
+                    if (!transitionWithObjects.hasOwnProperty(transitionName) && !transitionWithoutObject.hasOwnProperty(transitionName)) {
+                        transitionWithoutObject[transitionName] = transitionValue;
+                    }
                 }
-                if (typeof child.cornerRadius === 'number') {
-                    borderRadiuss[layerName] = `${(child.cornerRadius / rootSize)}rem`;
-                }
-                else {
-                    borderRadiuss[layerName] = `${(child.topRightRadius / rootSize)}rem ${(child.bottomRightRadius / rootSize)}rem ${(child.bottomLeftRadius / rootSize)}rem ${(child.topLeftRadius / rootSize)}rem`;
+                else if (layerNames.length > 1) {
+                    const objName = layerNames[0];
+                    const objProps = layerNames.slice(1);
+                    if (!transitionWithObjects.hasOwnProperty(objName)) {
+                        transitionWithObjects[objName] = {};
+                    }
+                    // Check if the properties of the object already exist
+                    let obj = transitionWithObjects[objName];
+                    for (let i = 0; i < objProps.length; i++) {
+                        const prop = objProps[i];
+                        if (!obj.hasOwnProperty(prop)) {
+                            if (i === objProps.length - 1) {
+                                obj[prop] = child.findOne(node => node.type === 'TEXT').characters;
+                            }
+                            else {
+                                obj[prop] = {};
+                            }
+                        }
+                        obj = obj[prop]; // Move to the next nested object
+                    }
                 }
             }
         });
-        borderRadius = borderRadiuss;
+        // Merge colorsWithoutObject and colorsWithObjects into the colors object, keeping colors as the destination variable
+        transition = Object.assign(Object.assign({}, transitionWithoutObject), transitionWithObjects);
     }
-    // Export transitions
-    // Export spacings
-    const configContent = generateConfigContent(typography, lineheight, borderRadius, boxShadow, colors);
+    const configContent = generateConfigContent(typography, lineheight, grid, spacing, borderRadius, boxShadow, colors, transition);
     console.log(configContent);
     // // Create and save the config.js file
     // const configFile = figma.createFile();
