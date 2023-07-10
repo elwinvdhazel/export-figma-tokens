@@ -1,4 +1,11 @@
 "use strict";
+// Define a variable to store the selected page
+let selectedPage;
+// Function to retrieve the page names from Figma
+function getPages() {
+    const pages = figma.root.children.map((page) => page.name);
+    figma.ui.postMessage({ type: 'setPages', pages });
+}
 const rootSize = 16;
 const sizeRange = ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl"];
 const weightRange = [{
@@ -48,20 +55,16 @@ function generateConfigContent(typography, lineheight, grid, spacing, borderRadi
   
   `;
 }
-// Function to export properties from the "🎨 Tokens" page
+// Function to export tokens based on the selected page
 function exportTokens() {
-    const pageName = '🎨 Tokens'; //TODO: make select box to select source page
-    let tokenPage = '';
-    if (figma.currentPage.name === pageName) {
-        tokenPage = figma.currentPage;
-    }
-    else {
-        figma.closePlugin('Please go to the "🎨 Tokens" page to run this plugin');
+    const page = figma.root.children.find((child) => child.name === selectedPage);
+    if (!page) {
+        figma.closePlugin(`Cannot find the selected page "${selectedPage}"`);
         return;
     }
     // Export colors
     let colors = {};
-    const colorSection = tokenPage.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
+    const colorSection = page.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
     if (colorSection) {
         const colorsWithoutObject = {}; // Store colors without objects
         const colorsWithObjects = {}; // Store colors with objects
@@ -113,7 +116,7 @@ function exportTokens() {
     // Export typography
     let typography = {};
     let lineheight = {};
-    const typographySection = tokenPage.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
+    const typographySection = page.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
     if (typographySection) {
         const fontFamilies = {}; // Store fonts
         const fontSizes = {}; // Store font sizes
@@ -174,7 +177,7 @@ function exportTokens() {
     }
     // Export grid
     let grid = {};
-    const gridSection = tokenPage.children.find((child) => child.name === 'Grid' && child.type === 'SECTION');
+    const gridSection = page.children.find((child) => child.name === 'Grid' && child.type === 'SECTION');
     if (gridSection) {
         const gridWithoutObject = {};
         const gridWithObjects = {};
@@ -225,7 +228,7 @@ function exportTokens() {
     }
     // Export spacings
     let spacing = {};
-    const spacingSection = tokenPage.children.find((child) => child.name === 'Spacing' && child.type === 'SECTION');
+    const spacingSection = page.children.find((child) => child.name === 'Spacing' && child.type === 'SECTION');
     if (spacingSection) {
         const spacings = {};
         spacingSection.children.forEach((child) => {
@@ -245,7 +248,7 @@ function exportTokens() {
     }
     // Export borderradius
     let borderRadius = {};
-    const borderRadiusSection = tokenPage.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
+    const borderRadiusSection = page.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
     if (borderRadiusSection) {
         const borderRadiuss = {};
         borderRadiusSection.children.forEach((child) => {
@@ -266,7 +269,7 @@ function exportTokens() {
     }
     // Export boxshadow
     let boxShadow = {};
-    const boxShadowSection = tokenPage.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
+    const boxShadowSection = page.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
     if (boxShadowSection) {
         const boxShadows = {};
         boxShadowSection.children.forEach((child) => {
@@ -291,7 +294,7 @@ function exportTokens() {
     }
     // Export transitions
     let transition = {};
-    const transitionSection = tokenPage.children.find((child) => child.name === 'Transitions' && child.type === 'SECTION');
+    const transitionSection = page.children.find((child) => child.name === 'Transitions' && child.type === 'SECTION');
     if (transitionSection) {
         const transitionWithoutObject = {};
         const transitionWithObjects = {};
@@ -347,11 +350,20 @@ function exportTokens() {
     // figma.notify('Config file created successfully.');
     // // Save the file
     // figma.ui.postMessage({ type: 'saveFile', file: configFile });
+    figma.closePlugin(`Tokens exported`);
 }
-// Run the exportTokens function when the plugin is run
-figma.showUI(__html__);
+figma.showUI(__html__, {
+    width: 300,
+    height: 210,
+    themeColors: true
+});
+// Listen for messages from the UI
 figma.ui.onmessage = (message) => {
-    if (message.type === 'generateTokens') {
+    if (message.type === 'getPages') {
+        getPages();
+    }
+    else if (message.type === 'generateTokens') {
+        selectedPage = message.selectedPage;
         exportTokens();
     }
 };

@@ -1,3 +1,13 @@
+// Define a variable to store the selected page
+let selectedPage: string;
+
+// Function to retrieve the page names from Figma
+function getPages() {
+  const pages = figma.root.children.map((page) => page.name);
+  figma.ui.postMessage({ type: 'setPages', pages });
+}
+
+
 const rootSize = 16;
 const sizeRange = ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl"]
 const weightRange = [{
@@ -64,21 +74,17 @@ function generateConfigContent(
 }
 
 
-// Function to export properties from the "🎨 Tokens" page
+// Function to export tokens based on the selected page
 function exportTokens() {
-  const pageName = '🎨 Tokens'; //TODO: make select box to select source page
-  let tokenPage = '';
-
-  if(figma.currentPage.name === pageName) {
-    tokenPage = figma.currentPage
-  } else {
-    figma.closePlugin('Please go to the "🎨 Tokens" page to run this plugin');
+  const page = figma.root.children.find((child) => child.name === selectedPage);
+  if (!page) {
+    figma.closePlugin(`Cannot find the selected page "${selectedPage}"`);
     return;
   }
   
   // Export colors
   let colors: Record<string, string> = {};
-  const colorSection = tokenPage.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
+  const colorSection = page.children.find((child) => child.name === 'Colors' && child.type === 'SECTION');
 
   if (colorSection) {
     const colorsWithoutObject: Record<string, string> = {}; // Store colors without objects
@@ -139,7 +145,7 @@ function exportTokens() {
   // Export typography
   let typography: Record<string, TextStyle> = {};
   let lineheight: Record<string, TextStyle> = {};
-  const typographySection = tokenPage.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
+  const typographySection = page.children.find((child) => child.name === 'Typography' && child.type === 'SECTION');
 
   if (typographySection) {
     const fontFamilies: Record<string, any> = {}; // Store fonts
@@ -210,7 +216,7 @@ function exportTokens() {
 
   // Export grid
   let grid: Record<string, string> = {};
-  const gridSection = tokenPage.children.find((child) => child.name === 'Grid' && child.type === 'SECTION');
+  const gridSection = page.children.find((child) => child.name === 'Grid' && child.type === 'SECTION');
 
   if (gridSection) {
     const gridWithoutObject: Record<string, string> = {};
@@ -269,7 +275,7 @@ function exportTokens() {
 
   // Export spacings
   let spacing: Record<string, string> = {};
-  const spacingSection = tokenPage.children.find((child) => child.name === 'Spacing' && child.type === 'SECTION');
+  const spacingSection = page.children.find((child) => child.name === 'Spacing' && child.type === 'SECTION');
 
   if (spacingSection) {
     const spacings: Record<string, any> = {};
@@ -294,7 +300,7 @@ function exportTokens() {
 
   // Export borderradius
   let borderRadius: Record<string, string> = {};
-  const borderRadiusSection = tokenPage.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
+  const borderRadiusSection = page.children.find((child) => child.name === 'Border radius' && child.type === 'SECTION');
 
   if (borderRadiusSection) {
     const borderRadiuss: Record<string, any> = {};
@@ -320,7 +326,7 @@ function exportTokens() {
 
   // Export boxshadow
   let boxShadow: Record<string, string> = {};
-  const boxShadowSection = tokenPage.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
+  const boxShadowSection = page.children.find((child) => child.name === 'Drop shadows' && child.type === 'SECTION');
 
   if (boxShadowSection) {
     const boxShadows: Record<string, any> = {};
@@ -352,7 +358,7 @@ function exportTokens() {
 
   // Export transitions
   let transition: Record<string, string> = {};
-  const transitionSection = tokenPage.children.find((child) => child.name === 'Transitions' && child.type === 'SECTION');
+  const transitionSection = page.children.find((child) => child.name === 'Transitions' && child.type === 'SECTION');
 
   if (transitionSection) {
     const transitionWithoutObject: Record<string, string> = {};
@@ -419,13 +425,22 @@ function exportTokens() {
 
   // // Save the file
   // figma.ui.postMessage({ type: 'saveFile', file: configFile });
+
+  figma.closePlugin(`Tokens exported`);
 }
 
-// Run the exportTokens function when the plugin is run
-figma.showUI(__html__)
+figma.showUI(__html__, {
+  width: 300,
+  height: 210,
+  themeColors: true
+});
 
+// Listen for messages from the UI
 figma.ui.onmessage = (message) => {
-  if (message.type === 'generateTokens') {
+  if (message.type === 'getPages') {
+    getPages();
+  } else if (message.type === 'generateTokens') {
+    selectedPage = message.selectedPage;
     exportTokens();
   }
 };

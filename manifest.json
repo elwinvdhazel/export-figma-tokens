@@ -1,5 +1,5 @@
 {
-  "name": "Export Tokens",
+  "name": "DN Toolkit Token Exporter",
   "id": "1250059853664518959",
   "api": "1.0.0",
   "main": "code.js",

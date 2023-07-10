@@ -3,22 +3,112 @@
 <head>
   <title>Plugin UI</title>
   <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
-      margin: 0;
-    }
-  </style>
+  :root {
+    --spacing: 0.75rem;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background-color: var(--figma-color-bg);
+    color: var(--figma-color-text);
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
+      sans-serif;
+    line-height: 1.4;
+    font-size: 0.9rem;
+    padding: var(--spacing);
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+  }
+  button {
+    appearance: none;
+    border-radius: 4px;
+    padding: var(--spacing);
+  }
+  form > * {
+    display: block;
+    width: 100%;
+  }
+  button {
+    background-color: var(--figma-color-bg-brand);
+    border: 1px solid var(--figma-color-bg-brand);
+    color: var(--figma-color-text-onbrand);
+    font-weight: bold;
+  }
+  button:hover {
+    background-color: var(--figma-color-bg-brand-hover);
+  }
+
+  button:focus {
+    background-color: var(--figma-color-bg-brand-secondary);
+    border-color: var(--figma-color-bg-brand-tertiary);
+  }
+
+  select {
+    appearance: none;
+    background-color: var(--figma-color-bg-secondary);
+    color: var(--figma-color-text-secondary);
+    border: 2px solid var(--figma-color-border);
+    border-radius: 4px;
+    padding: var(--spacing);
+  }
+  select:focus {
+    border-color: var(--figma-color-border-selected);
+    outline: none;
+  }
+</style>
 </head>
 <body>
-  <button id="generateButton">Generate tokens</button>
+  <p>A DN plugin for exporting Toolkit Tokens for development.</p>
+  <form>
+    <label for="pageSelect">Select your Tokens page:</label>
+    <select id="pageSelect"></select>
+    <button id="generateButton">Export Toolkit Tokens</button>
+  </form>
   <script>
+    // Send message to request the pages data
+    parent.postMessage({ pluginMessage: { type: 'getPages' } }, '*');
+
+    // Listen for messages from the plugin
+    window.addEventListener('message', (event) => {
+      if (event.data.pluginMessage.type === 'setPages') {
+        const pageSelect = document.getElementById('pageSelect');
+        const pages = event.data.pluginMessage.pages;
+
+        // Populate the dropdown with pages
+        pages.forEach((page) => {
+          const option = document.createElement('option');
+          option.value = page;
+          option.textContent = page;
+          pageSelect.appendChild(option);
+        });
+
+        // Set the default selected page
+        const defaultPage = '🎨 Tokens';
+        const defaultOption = Array.from(pageSelect.options).find((option) => option.value === defaultPage);
+        if (defaultOption) {
+          defaultOption.selected = true;
+        }
+      }
+    });
+
+    // Generate tokens when the button is clicked
     document.getElementById('generateButton').addEventListener('click', function () {
-      parent.postMessage({ pluginMessage: { type: 'generateTokens' } }, '*');
+      const pageSelect = document.getElementById('pageSelect');
+      const selectedPage = pageSelect.value;
+
+      parent.postMessage({ pluginMessage: { type: 'generateTokens', selectedPage } }, '*');
     });
   </script>
 </body>
+
 </html>
